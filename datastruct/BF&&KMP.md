@@ -1,7 +1,7 @@
 # 暴力匹配算法BF
 
 
-![](./BF && KMP.assets/1762668667958-46e04fb3-8b6a-4332-acee-7c8a3021801a.jpeg)
+![](./BF&&KMP.assets/1762668667958-46e04fb3-8b6a-4332-acee-7c8a3021801a.jpeg)
 
 
 
