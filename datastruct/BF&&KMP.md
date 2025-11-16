@@ -37,7 +37,7 @@ int Index_BF(string s, string t)
 
 # 模式匹配算法KMP
 
-	![](./BF&&KMP.assets/file-20251116202422306.png)
+![](./BF&&KMP.assets/file-20251116202422303.jpeg)
 
 
 模式匹配：<font style="color:#e84c22;">子串的定位操作，求的是子串（模式串）在主串中的位置</font>
@@ -59,6 +59,7 @@ int Index_BF(string s, string t)
     - 如果对应字符相同，则以next的值充当字符下标，对应nextval值即为当前字符所求
 
 如果是下标从0开始就是**每个数字-1**![](./BF && KMP.assets/1761310930568-23864619-d368-419e-ad13-6003fcc6f1cd.png)
+![](./BF&&KMP.assets/file-20251116202422298.jpeg)
 
 ## 代码实现
 ```cpp
