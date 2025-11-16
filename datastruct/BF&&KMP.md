@@ -1,7 +1,7 @@
 # 暴力匹配算法BF
 
 
-![](./BF&&KMP.assets/1762668667958-46e04fb3-8b6a-4332-acee-7c8a3021801a.jpeg)
+![](./BF&&KMP.assets/file-20251116202422306.png)
 
 
 
@@ -37,9 +37,7 @@ int Index_BF(string s, string t)
 
 # 模式匹配算法KMP
 
-
-![](./BF && KMP.assets/1762668695024-92eab98f-b010-4100-ba9f-83b4ba897619.jpeg)
-
+	![](./BF&&KMP.assets/file-20251116202422306.png)
 
 
 模式匹配：<font style="color:#e84c22;">子串的定位操作，求的是子串（模式串）在主串中的位置</font>
