@@ -3,8 +3,6 @@
 
 ![](./BF&&KMP.assets/file-20251116202422306.png)
 
-
-
 ## 代码实现
 ```cpp
 int Index_BF(string s, string t)
@@ -58,7 +56,7 @@ int Index_BF(string s, string t)
     - 如果对应字符不同，nextval值就是next值
     - 如果对应字符相同，则以next的值充当字符下标，对应nextval值即为当前字符所求
 
-如果是下标从0开始就是**每个数字-1**![](./BF && KMP.assets/1761310930568-23864619-d368-419e-ad13-6003fcc6f1cd.png)
+如果是下标从0开始就是**每个数字-1**
 ![](./BF&&KMP.assets/file-20251116202422298.jpeg)
 
 ## 代码实现
