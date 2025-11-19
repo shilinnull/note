@@ -172,7 +172,6 @@ mysql> select * from person where name='a';
 | a    |
 +------+
 1 row in set (0.00 sec)
-
 ```
 
 ![](./MySQL库的管理和表操作.assets/1747986864524-09dec296-10d1-4243-a72e-2b4df6e4454c.png)
