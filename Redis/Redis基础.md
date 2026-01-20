@@ -181,9 +181,21 @@ STRLEN key
 
 
 
+## 内部编码
 
+int：8个字节的⻓整型。
 
+embstr：小于等于39个字节的字符串。
 
+raw：大于39个字节的字符串
+
+查看编码：
+
+```SQL
+object encoding key
+```
+
+## 应用场景
 
 
 
