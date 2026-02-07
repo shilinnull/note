@@ -379,9 +379,9 @@ int main()
 + 当线程访问临界资源区的过程，对于其他线程是原子的。
 
 ## 小结
-1. 所以，加锁的范围，粒度一定要小
+1. 加锁的范围粒度一定要小
 2. 任何线程，要进行抢票，都得先申请锁，原则上，不应该有例外
-3. 所有线程申请锁，**前提是所有线程都得看到这把锁，锁本身也是共享资源**，加锁的过程，必须是**原子**的！**原子性**：要么不做，要做就做完，没有中间状态，就是原子性
+3. 所有线程申请锁，**前提是所有线程都得看到这把锁，锁本身也是共享资源**，加锁的过程，必须是**原子**的！而**原子性**：要么不做，要做就做完，没有中间状态，就是原子性
 4. 如果线程申请锁**失败**了，我的线程要被**阻塞**
 5. 如果线程申请**成功**了，继续向后**运行**
 6. 如果线程申请锁成功了，执行临界区的代码了，**执行临界区的代码是可以被切换的**，其他线程无法进入，**因为被切换了，但是没有释放，可以放心的执行完毕，没有任何线程能打扰。**
@@ -804,8 +804,6 @@ private:
 **生产者和消费者**：互斥，同步
 
 # 基于BlockingQueue的生产者消费者模型
-`BlockingQueue`
-
 在多线程编程中阻塞队列(Blocking Queue)是一种常用于实现生产者和消费者模型的数据结构。其与普通的队列区别在于，当队列为空时，从队列获取元素的操作将会被阻塞，直到队列中被放入了元素；当队列满时，往队列里存放元素的操作也会被阻塞，直到有元素被从队列中取出(以上的操作都是基于不同的线程来说的，线程在对阻塞队列进程操作时会被阻塞)
 
 ![](./Linux多线程【线程互斥】.assets/1752138859114-36bb53af-6ea9-40e8-bcf3-03f6150bdfd3.png)
@@ -1439,8 +1437,8 @@ int main()
 #include <fstream>
 
 #include "lockGuard.hpp"
-// 日志等级
 
+// 日志等级
 enum class LogLevel
 {
     DEBUG,
@@ -1654,11 +1652,11 @@ Logger logger; // 全局日志对象
 
 线程池的应用场景：
 
-① 需要大量的线程来完成任务，且完成任务的时间比较短。 WEB服务器完成网页请求这样的任务，使用线程池技术是非常合适的。因为单个任务小，而任务数量巨大，你可以想象一个热门网站的点击次数。 但对于长时间的任务，比如一个Telnet连接请求，线程池的优点就不明显了。因为Telnet会话时间比线程的创建时间大多了。
+① 需要大量的线程来完成任务，且完成任务的时间比较短。 WEB服务器完成网页请求这样的任务，使用线程池技术是非常合适的。因为单个任务小，而任务数量巨大，你可以想象一个热门网站的点击次数。 但对于长时间的任务，比如一个**Telnet连接请求**，线程池的优点就不明显了。因为Telnet会话时间比线程的创建时间大多了。
 
-② 对性能要求苛刻的应用，比如要求服务器迅速响应客户请求。
+② 对性能要求苛刻的应用，比如要求**服务器迅速响应客户请求**。
 
-③ 接受突发性的大量请求，但不至于使服务器因此产生大量线程的应用。突发性大量客户请求，在没有线程池情况下，将产生大量线程，虽然理论上大部分操作系统线程数目最大值不是问题，短时间内产生大量线程可能使内存到达极限，出现错误。
+③ **接受突发性的大量请求**，但不至于使服务器因此产生大量线程的应用。突发性大量客户请求，在没有线程池情况下，将产生大量线程，虽然理论上大部分操作系统线程数目最大值不是问题，短时间内产生大量线程可能使内存到达极限，出现错误。
 
 线程池示例：
 
@@ -1920,230 +1918,7 @@ private:
 ```
 
 ## Logger.hpp
-```cpp
-#ifndef __LOGGER_HPP__
-#define __LOGGER_HPP__
-
-#include <iostream>
-#include <string>
-#include <ctime>
-#include <unistd.h>
-#include <memory>
-#include <sstream>
-#include <filesystem>
-#include <fstream>
-
-#include "lockGuard.hpp"
-// 日志等级
-
-enum class LogLevel
-{
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR,
-    FATAL
-};
-
-std::string Level2String(LogLevel level)
-{
-    switch (level)
-    {
-    case LogLevel::DEBUG:
-        return "Debug";
-    case LogLevel::INFO:
-        return "Info";
-    case LogLevel::WARNING:
-        return "Warning";
-    case LogLevel::ERROR:
-        return "Error";
-    case LogLevel::FATAL:
-        return "Fatal";
-    default:
-        return "Unknown";
-    }
-}
-
-std::string getCurrentTime()
-{
-    // 获取当前时间戳
-    time_t currtime = time(nullptr);
-
-    // 转换时间
-    struct tm t;
-    localtime_r(&currtime, &t);
-
-    char timebuffer[64];
-
-    snprintf(timebuffer, sizeof(timebuffer), "%4d-%02d-%02d %02d:%02d:%02d",
-             t.tm_year + 1900,
-             t.tm_mon + 1,
-             t.tm_mday,
-             t.tm_hour,
-             t.tm_min,
-             t.tm_sec);
-    return timebuffer;
-}
-
-class LogStrategy
-{
-public:
-    virtual ~LogStrategy() = default;
-    virtual void SyncLog(const std::string &logmessage) = 0; // 刷新日志
-};
-
-class ConsoleLogStrategy : public LogStrategy
-{
-public:
-    ~ConsoleLogStrategy()
-    {
-    }
-    void SyncLog(const std::string &logmessage) override
-    {
-        {
-            LockGuard lockGuard(&_lock);
-            std::cout << logmessage << std::endl;
-        }
-    }
-
-private:
-    Mutex _lock;
-};
-
-const std::string logdefaultdir = "log";
-const static std::string logfilename = "test.log";
-
-class FileLogStrategy : public LogStrategy
-{
-public:
-    FileLogStrategy(const std::string &dir = logdefaultdir, const std::string &logfilename = logfilename)
-        : _dir_path_name(dir), _file_name(logfilename)
-    {
-        {
-            LockGuard lockGuard(&_lock);
-            if (std::filesystem::exists(_dir_path_name))
-            {
-                return;
-            }
-            try
-            {
-                std::filesystem::create_directories(_dir_path_name);
-            }
-            catch (const std::filesystem::filesystem_error &e)
-            {
-                std::cerr << e.what() << "\r\n";
-            }
-        }
-    }
-    void SyncLog(const std::string &logmessage) override
-    {
-        {
-            LockGuard lockGuard(&_lock);
-            std::string target = _dir_path_name;
-            target += "/";
-            target += _file_name;
-            std::ofstream out(target.c_str(), std::ios::app);
-            if (!out.is_open())
-            {
-                std::cerr << "Failed to open log file: " << target << "\n";
-                return;
-            }
-            out << logmessage << "\n";
-            out.close();
-        }
-    }
-    ~FileLogStrategy() {}
-
-private:
-    std::string _dir_path_name;
-    std::string _file_name;
-    Mutex _lock;
-};
-
-class Logger
-{
-public:
-    Logger()
-    {
-        EnableConsoleLogStrategy();
-    }
-
-    void EnableConsoleLogStrategy()
-    {
-        _strategy = std::make_unique<ConsoleLogStrategy>();
-    }
-
-    void EnableFileLogStrategy()
-    {
-        _strategy = std::make_unique<FileLogStrategy>();
-    }
-
-    // 一条消息
-    class LogMessage
-    {
-    public:
-        LogMessage(LogLevel level, std::string filename, int line, Logger &logger)
-            : _curr_time(getCurrentTime()), _level(level), _pid(getpid()), _filename(filename), _line(line), _logger(logger)
-        {
-            std::stringstream ss;
-            ss << "[" << _curr_time << "] "
-               << "[" << Level2String(_level) << "] "
-               << "[" << _pid << "] "
-               << "[" << _filename << "] "
-               << "[" << _line << "] "
-               << "- ";
-            _loginfo = ss.str();
-        }
-
-        template <typename T>
-        LogMessage &operator<<(const T &info)
-        {
-            std::stringstream ss;
-            ss << info;
-            _loginfo += ss.str();
-            return *this;
-        }
-
-        ~LogMessage()
-        {
-            // 在析构函数中刷新日志
-            if (_logger._strategy)
-            {
-                _logger._strategy->SyncLog(_loginfo);
-            }
-        }
-
-    private:
-        std::string _curr_time; // 当前时间
-        LogLevel _level;        // 告警级别
-        pid_t _pid;             // 进程pid
-        std::string _filename;  // 文件名字
-        int _line;              // 行号
-
-        std::string _loginfo; // 信息主体
-        Logger &_logger;      // 提供刷新策略的具体做法
-    };
-
-    LogMessage operator()(LogLevel level, std::string filename, int line)
-    {
-        return LogMessage(level, filename, line, *this);
-    }
-
-    ~Logger() {}
-
-private:
-    std::unique_ptr<LogStrategy> _strategy;
-};
-
-Logger logger; // 全局日志对象
-
-#define LOG(level) logger(level, __FILE__, __LINE__)
-#define EnableConsoleLog() logger.EnableConsoleLogStrategy()
-#define EnableFileLog() logger.EnableFileLogStrategy()
-
-#endif // __LOGGER_HPP__
-
-```
+使用上面写的日志
 
 ## Cond.hpp
 ```cpp
@@ -2189,95 +1964,8 @@ private:
 ```
 
 ## Task.hpp
-```cpp
-#pragma once
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <functional>
-#include <map>
 
-std::string opers = "+-*/%";
-
-enum
-{
-    NorMal = 0,
-    DivZero,
-    ModZero,
-    Unknown
-};
-
-class Task
-{
-public:
-    Task()
-    {}
-    
-    Task(int x, int y, char op)
-        : data1_(x), data2_(y), oper_(op)
-    {
-    }
-
-    void Run()
-    {
-        std::map<char, std::function<void()>> CmdOp{
-            {'+', [this](){ result_ = data1_ + data2_; exitcode_ = NorMal; }},
-            {'-', [this](){ result_ = data1_ - data2_; exitcode_ = NorMal; }},
-            {'*', [this](){ result_ = data1_ * data2_; exitcode_ = NorMal; }},
-            {'/', [this](){ if (data2_ == 0) exitcode_ = DivZero; else result_ = data1_ / data2_; }},
-            {'%', [this](){ if (data2_ == 0) exitcode_ = ModZero; else result_ = data1_ % data2_; }}
-        };
-
-        // auto it = CmdOp.find(oper_);
-        std::map<char, std::function<void()>>::iterator it = CmdOp.find(oper_);
-        if (it != CmdOp.end())
-            it->second(); // 调用lambda函数
-        else
-            exitcode_ = Unknown; // 如果没有找到操作，设置错误代码
-    }
-    void operator()()
-    {
-        Run();
-    }
-    std::string GetResult() // 这里可以使用stringstream
-    {
-        std::stringstream s;
-        s << data1_ << oper_ << data2_ << "=" << result_ << " [code: " << exitcode_ << "]";
-
-        std::string r;
-        r = s.str();
-        return r;
-    }
-    std::string GetTask()
-    {
-        std::stringstream s;
-        s << data1_ << oper_ << data2_ << "=?";
-
-        std::string r;
-        r = s.str();
-        return r;
-    }
-    
-    std::string Result2String()
-    {
-        std::stringstream ss;
-        ss << data1_ << oper_ << data2_ << "=" << result_;
-        return ss.str();
-    }
-
-    ~Task()
-    {
-    }
-
-private:
-    int data1_; // 操作数
-    int data2_; // 操作数
-    char oper_; // 操作符
-
-    int result_;   // 结果
-    int exitcode_; // 错误码
-};
-```
+使用上面写的Task.hpp
 
 ## main.cc
 ```cpp
@@ -2370,8 +2058,8 @@ private:
             LOG(LogLevel::DEBUG) << name << " handler task: " << t.Result2String();
         }
     }
-    std::unique_ptr<ThreadPool<T>> &operator=(const std::unique_ptr<ThreadPool<T>> &) = delete; // 赋值重载禁用掉
-    ThreadPool(const std::unique_ptr<ThreadPool<T>> &) = delete;                                // 拷贝构造禁用掉
+    std::unique_ptr<ThreadPool<T>> &operator=(const std::unique_ptr<ThreadPool<T>>&)=delete; // 赋值重载禁用掉
+    ThreadPool(const std::unique_ptr<ThreadPool<T>> &) = delete;                            // 拷贝构造禁用掉
 
 public:
     ThreadPool(int threadNum = defaultThreadNum)
@@ -2799,8 +2487,6 @@ int main()
 # 自旋锁
 自旋锁是一种多线程同步机制，用于保护共享资源免受并发访问的影响。在多个线程尝试获取锁时，它们会持续自旋（即在一个循环中不断检查锁是否可用）而不是立即进入休眠状态等待锁的释放。这种机制减少了线程切换的开销，适用于短时间内锁的竞争情况。但是不合理的使用，可能会造成CPU的浪费。
 
-
-
 原理：
 
 自旋锁通常使用一个共享的标志位（如一个布尔值）来表示锁的状态。当标志位为true时，表示锁已被某个线程占用；当标志位为false时，表示锁可用。当一个线程尝试获取自旋锁时，它会不断检查标志位：
@@ -2833,9 +2519,9 @@ void spinlock_unlock() {
 typedef _Atomic struct
 {
 #if __GCC_ATOMIC_TEST_AND_SET_TRUEVAL == 1
-_Bool __val;
+    _Bool __val;
 #else
-unsigned char __val;
+    unsigned char __val;
 #endif
 } atomic_flag;
 ```
@@ -2898,9 +2584,4 @@ int main(void)
 
 在多CPU环境下，自旋锁可能不如其他锁机制高效，因为它可能导致线程在不同的CPU上自旋等待。
 
-
-
-所以自旋锁是一种适用于短时间内锁竞争情况的同步机制，它通过减少线程切换的开销来提高锁操作的效率。然而，它也存在CPU资源浪费和可能引起活锁等缺点。在使用自旋锁时，需要根据具体的应用场景进行选择，并确保锁被释放的时间尽可能短。
-
-
-
+所以**自旋锁是一种适用于短时间内锁竞争情况的同步机制**，它通过减少线程切换的开销来提高锁操作的效率。然而，它也存在CPU资源浪费和可能引起活锁等缺点。在使用自旋锁时，需要根据具体的应用场景进行选择，并确保锁被释放的时间尽可能短。
