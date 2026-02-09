@@ -375,7 +375,7 @@ int main()
 }
 ```
 
-
+![d61d2cb9dc42f8](./Linux基于建造者模式实现信号量.assets/d61d2cb9dc42f8.png)
 
 System V信号量的生命周期是随内核的
 
