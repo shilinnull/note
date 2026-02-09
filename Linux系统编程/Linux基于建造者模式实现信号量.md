@@ -1,5 +1,14 @@
 # Linux基于建造者模式实现信号量
+
+信号量和PV操作是由`Dijkstra`提出的
+
 信号量本质是一把计数器（资源数量的计数器）
+
+S>0：S表示可用资源的个数
+
+S=0：表示无可用资源，无等待进程
+
+S<0：|S|表示等待队列中进程个数
 
 ## 信号量结构体
 ```c
@@ -10,6 +19,9 @@ struct semaphore {
 ```
 
 ## 信号量集结构体
+
+The semid_ds data structure is defined in <sys/sem.h> as follows：
+
 ```c
 /* Obsolete, used only for backwards compatibility and libc5 compiles */
 struct semid_ds {
@@ -22,6 +34,11 @@ struct semid_ds {
 	struct sem_undo	*undo;			/* undo requests on this array */
 	unsigned short	sem_nsems;		/* no. of semaphores in array */
 };
+```
+
+The ipc_perm structure is defined as follows (the highlighted fields are settable using IPC_SET):
+
+```CPP
 struct ipc_perm
 {
 	__kernel_key_t	key;
@@ -34,7 +51,10 @@ struct ipc_perm
 };
 ```
 
+
+
 ## 信号量操作接口
+
 ### semget
 ```c
 int semget(key_t key, int nsems, int semflg);
@@ -57,13 +77,13 @@ int semctl(int semid, int semnum, int cmd, ...);
 
 ![](./Linux基于建造者模式实现信号量.assets/1750814984381-8172ffdd-3758-439e-adc4-993fb43d3597.png)
 
-<font style="color:rgb(31,35,41);">参数介绍 </font>
+参数介绍 
 
-<font style="color:rgb(31,35,41);">semid: 由 semget 返回的信号集标识码 </font>
+semid: 由 semget 返回的信号集标识码
 
-<font style="color:rgb(31,35,41);">semnum: 信号集中信号量的序号</font>
+emnum: 信号集中信号量的序号
 
-<font style="color:rgb(31,35,41);">cmd: 将要采取的动作</font>
+cmd: 将要采取的动作
 
 ### semop
 ```c
@@ -72,15 +92,29 @@ int semop(int semid, struct sembuf *sops, size_t nsops);
 
 ![](./Linux基于建造者模式实现信号量.assets/1750815071229-e21a5ccb-96fe-43fe-87c0-553ac995c130.png)
 
-<font style="color:rgb(31,35,41);">参数介绍 </font>
+参数介绍 
 
-<font style="color:rgb(31,35,41);">semid: 是该信号量的标识码，也就是 semget 函数的返回值 </font>
+semid: 是该信号量的标识码，也就是 semget 函数的返回值
 
-<font style="color:rgb(31,35,41);">sops: 指向⼀个结构 sembuf 的指针 </font>
+sops: 指向⼀个结构 `sembuf` 的指针
 
-<font style="color:rgb(31,35,41);">nsops: </font>`<font style="color:rgb(31,35,41);">sops</font>`<font style="color:rgb(31,35,41);">对应的信号量的个数，也就是可以同时对多个信号量进行PV操作</font>
+nsops: `sops`对应的信号量的个数，也就是可以同时对多个信号量进行PV操作
 
 ## 使用建造者模式进行封装Sem
+
+建造者模式的核心思想是将对象的构建过程与表示分离
+
+**主要组成部分**：
+
+1. **产品（Product）**：最终要创建的复杂对象
+2. **抽象建造者（Builder）**：定义创建产品各个部分的接口
+3. **具体建造者（ConcreteBuilder）**：实现抽象建造者接口，构建和装配各个部件
+4. **指挥者（Director）**：调用建造者中的方法，按特定顺序构建产品
+
+例如电脑的生产：
+
+![7bfcbc478806b](./Linux基于建造者模式实现信号量.assets/7bfcbc478806b.png)
+
 ### Sem.hpp
 ```cpp
 #ifndef SEM_HPP
@@ -342,4 +376,6 @@ int main()
 ```
 
 
+
+System V信号量的生命周期是随内核的
 
