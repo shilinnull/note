@@ -375,7 +375,7 @@ string转uint32_t：
 ```cpp
 void Init()
 {
-    // 1. 创建socket
+    // 1. 创建socket				UDP
     _sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (_sockfd < 0)
     {
@@ -387,9 +387,9 @@ void Init()
     // 2. bind
     struct sockaddr_in local;
     bzero(&local, sizeof(local));
-    local.sin_family = AF_INET;                     // 采用网络通信, AF_INET填充一个struct sockaddr_in结构体,为了用于网络通信
+    local.sin_family = AF_INET; // 采用网络通信, AF_INET填充一个struct sockaddr_in结构体,为了用于网络通信
     local.sin_addr.s_addr = inet_addr(_ip.c_str()); // 1.string->uint32_t 2.htonl
-    local.sin_port = htons(_port);                  // 转成网络字节序, 给别人发消息,也要把自己的port和ip发送给对方
+    local.sin_port = htons(_port);           // 转成网络字节序, 给别人发消息,也要把自己的port和ip发送给对方
 
     int n = bind(_sockfd, (struct sockaddr *)&local, sizeof(local));
     if (n < 0)
@@ -459,7 +459,7 @@ netstat -nuap   n:能显示数字显示数字  u：UDP  a：all  p：进程
 
 那不能绑定公网ip，如何让别人能找到我呢？
 
-**实际情况下一款网络服务器不建议指明一个ip**。  
+**实际情况下一款网络服务器不建议指明一个ip**。
 就是说未来服务器不要显示绑定一个ip，因为有时候一些原因服务器上不止一个ip，如果今天绑定了一个特定ip，大家可以用的是ip1，ip2等都在向这个端口号为8080的服务器发送消息，但此时只绑定一个明确的ip，那么最终只能收到目的ip就是自己显示绑定的ip发送的数据。别人用其他ip向8080发送数据那就不能收到了。
 
 所以在给`struct sockaddr_in`填充ip地址时，一般写法如下。这也是为什么在构造的时候给ip缺省值`0.0.0.0`的原因。 任意地址绑定！未来发送到这台机器上的所有的数据只要访问的端口号port是8080，都可以交付给这个服务器。
@@ -516,7 +516,7 @@ void Init()
     // 2. bind
     struct sockaddr_in local;
     bzero(&local, sizeof(local));
-    local.sin_family = AF_INET;                     // 采用网络通信, AF_INET填充一个struct sockaddr_in结构体,为了用于网络通信
+    local.sin_family = AF_INET; // 采用网络通信, AF_INET填充一个struct sockaddr_in结构体,为了用于网络通信
     // local.sin_addr.s_addr = inet_addr(_ip.c_str()); // 1.string->uint32_t 2.htonl
     local.sin_addr.s_addr = INADDR_ANY;             // 绑定到任意IP地址
     local.sin_port = htons(_port);                  // 转成网络字节序, 给别人发消息,也要把自己的port和ip发送给对方
@@ -561,12 +561,12 @@ int main(int argc, char *argv[])
 ```
 
 ## 服务器读取数据
-![](./Socket编程（UDP）.assets/1752917329050-135f4f2f-6f3e-4b9d-8ccc-c0495a51f105.png)  
-sockfd：从那个套接字读  
-buf：读上来的数据放那个缓冲区  
-len：这个缓冲区多大  
-flags：怎么读，阻塞式的读取（填0代表阻塞式）  
-src_addr：输出型参数，今天读过来数据想知道是谁发的。返回对应的消息内容，是从哪一个client发来的。  
+![](./Socket编程（UDP）.assets/1752917329050-135f4f2f-6f3e-4b9d-8ccc-c0495a51f105.png) 
+sockfd：从那个套接字读
+buf：读上来的数据放那个缓冲区
+len：这个缓冲区多大
+flags：怎么读，阻塞式的读取（填0代表阻塞式)
+src_addr：输出型参数，今天读过来数据想知道是谁发的。返回对应的消息内容，是从哪一个client发来的。
 addrlen：输出型参数，传过去的结构体多大。
 
 因为是网络通信，因此传`struct sockaddr_in`结构体对象过去，会把client的ip和port消息填入这个结构体中。
@@ -612,9 +612,9 @@ void Start()
 ```
 
 1. 字节序转变 
-2. 2.int->点分十进制
+2. int->点分十进制
 
-  
+
 ![](./Socket编程（UDP）.assets/1752919574237-37a94104-3c44-4144-8de6-855c8efada0d.png)
 
 ## UdpServer.hpp
@@ -658,7 +658,7 @@ public:
         local.sin_family = AF_INET; // 采用网络通信, AF_INET填充一个struct sockaddr_in结构体,为了用于网络通信
         // local.sin_addr.s_addr = inet_addr(_ip.c_str()); // 1.string->uint32_t 2.htonl
         local.sin_addr.s_addr = INADDR_ANY; // 绑定到任意IP地址
-        local.sin_port = htons(_port);      // 转成网络字节序, 给别人发消息,也要把自己的port和ip发送给对方
+        local.sin_port = htons(_port);  // 转成网络字节序, 给别人发消息,也要把自己的port和ip发送给对方
 
         int n = bind(_sockfd, (struct sockaddr *)&local, sizeof(local));
         if (n < 0)
@@ -767,7 +767,6 @@ int main(int argc, char *argv[])
 所谓bind是让套接字文件信息和网络ip和port产生关联。未来通信客户端和服务端都有自己的ip和port。那client要不要bind？
 
 > **client必须要bind，但不需要显示bind(不需要程序员自己bind)**
->
 
 1. **那server服务端为什么一定要显示bind？**
 
@@ -778,17 +777,15 @@ int main(int argc, char *argv[])
 
 2. **那client客户端为什么不用显示bind？**
 
-> 写服务器的是一家公司，写client是无数家公司。  
+> 写服务器的是一家公司，写client是无数家公司。
 比如写抖音App是字节跳动一家公司，但你的手机一定装满各自APP，手机装了这么多客户端，如果每个客户端都自己说就要绑定9090这个端口号，那一定是谁先启动那个App先拿到这个端口号，那其他的客户端就启动不起来了。
->
 
 所以客户端不需要明确哪一个，只需要有就可以了，保证唯一性就行了。**并且这由OS自动形成端口进行bind，然后还会绑定ip**。
 
 3. **OS在什么时候，如何bind**。
 
-> 如何bind，OS发现bind没绑就采用随机策略形成一个端口号，然后使用bind方法进行绑定。  
+> 如何bind，OS发现bind没绑就采用随机策略形成一个端口号，然后使用bind方法进行绑定。
 在首次向服务器`sendto`数据时，OS发现没有bind绑定ip和port，只写了服务器的ip和port，所以OS会自动绑定ip和port。
->
 
 **客户端 **
 
@@ -798,13 +795,13 @@ int main(int argc, char *argv[])
 
 ![](./Socket编程（UDP）.assets/1752919502912-7f5b9881-b5d7-49ae-a3b1-bca16640a826.png)
 
-sockfd：往那个套接字发送  
-buf：发送的内容是什么  
-len：内容多长  
-flags：发送方式 ，阻塞式发送（0）有数据就发没数据就等  
-dest_addr：输入型参数，告诉客户端要发给谁。
+sockfd：往那个套接字发送
+buf：发送的内容是什么
+len：内容多长
+flags：发送方式 ，阻塞式发送（0）有数据就发没数据就等
+dest_addr：输入型参数，告诉客户端要发给谁
 
-给个`struct sockaddr_in`结构体，往结构体填充要发给服务器的ip地址和port。
+给个`struct sockaddr_in`结构体，往结构体填充要发给服务器的ip地址和port
 
 addrlen：输入型参数，这个结构体多大
 
@@ -832,14 +829,15 @@ int main(int argc, char *argv[])
 
     std::string server_ip = argv[1];
     uint16_t server_port = atoi(argv[2]);
-
+    
+	// 1. socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
     {
         std::cerr << "Create socket error" << std::endl;
         exit(1);
     }
-
+	// 2. ip
     struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;                           // 使用IPv4地址族
@@ -880,7 +878,7 @@ int main(int argc, char *argv[])
 ![](./Socket编程（UDP）.assets/1752919187125-d5e3fdf8-623e-44b2-a792-f8d9068e8f28.png)
 
 # 根据UDP客户端服务端实现简单的英译汉的网络字典
-服务器把数据读上来就完了吗？并不是，它可能还会对这些数据进行处理。  
+服务器把数据读上来就完了吗？并不是，它可能还会对这些数据进行处理。
 因此我们添加一个回调函数，对数据进行处理。
 
 ```cpp
@@ -991,7 +989,7 @@ private:
 
     callback_t _cb; // 回调函数
 
-    bool _isRunning; // 服务器是否在 -运行
+    bool _isRunning; // 服务器是否在运行
 };
 
 #endif // UDP_SERVER_HPP
