@@ -33,14 +33,13 @@ open 函数具体使用哪个，和具体应用场景相关，如**目标文件�
 
 `flag`的参数
 
-> `O_RDONLY`: 只读打开  
-`O_WRONLY`: 只写打开  
-`O_RDWR`: 读，写打开  
-`O_CREAT` : 若文件不存在，则创建它。需要使用mode选项，来指明新文件的访问权限  
-`O_APPEND`: 追加写  
-`O_TRONC`:文件以只读或者只写打开是，清空文件内容  
+> `O_RDONLY`: 只读打开
+`O_WRONLY`: 只写打开
+`O_RDWR`: 读，写打开
+`O_CREAT` : 若文件不存在，则创建它。需要使用mode选项，来指明新文件的访问权限
+`O_APPEND`: 追加写
+`O_TRONC`:文件以只读或者只写打开是，清空文件内容
 `mode_t`:打开文件的权限，以八进制形式写
->
 
 要实现一个参数实现多个功能就需要**位图**，flags参数其实需要采用位图的方式传参，也就是说,：Linux操作系统为`flags`参数提供的各种选项其实是表示一个整数二进制不同的位. **一个整数的比特位表示**`flags`**参数中某个选项是否被选中**
 
@@ -135,7 +134,7 @@ int main()
 
 + 返回值
     - 写入成功返回写入成功的字节数，返回0为什么也没有写入，返回-1为写入失败  
-![](./Linux文件操作.assets/1745116158588-0d37ac93-5a34-4517-8ef2-5498bf77b46e.png)
+    ![](./Linux文件操作.assets/1745116158588-0d37ac93-5a34-4517-8ef2-5498bf77b46e.png)
 + 函数参数解读：
     - 第一个参数为要传入的文件描述符
     - 第二个参数为要传入的字符串
@@ -471,7 +470,6 @@ int main() {
     close(fd);
     return 0;
 }
-
 ```
 
 ![](./Linux文件操作.assets/1745116159769-4c77fb23-9263-4bef-a268-36f9e700e19c.png)
@@ -509,7 +507,7 @@ int main() {
 一旦我们使用`printf`输出时候，就不会显示到屏幕了，而显示到文件；这是因为`printf`默认是往标准输入输出内容的，而`printf`的标准输入就是`stdout`这个变量，而`stdout`这个变量就是一个`FILE`类型的结构体指针，而这个结构体指针里面有一个成员就是文件描述符`fd`，而fd就是1号，而这个1号就是指向`struct file` 这个结构体，这个结构体就是标准输入。
 
 ## 六、dup2–重定向函数
-+ 函数原型
+函数原型
 
 ![](./Linux文件操作.assets/1745116159916-f565a826-1f79-48ea-a2a8-ae34085c7262.png)
 
@@ -579,7 +577,7 @@ struct file {
 	struct dentry		*f_dentry;
 	struct vfsmount         *f_vfsmnt;
 	const struct file_operations	*f_op;
-	atomic_t		f_count;                // 这个就是引用技术
+	atomic_t		f_count;                // 这个就是引用计数
 	unsigned int 		f_flags;
 	mode_t			f_mode;
 	loff_t			f_pos;
@@ -637,12 +635,13 @@ int main()
     }
     return 0;
 }
-
 ```
 
 ![](./Linux文件操作.assets/1745583519016-b9748c3a-3072-402e-b3b6-de74be5fcabd.png)
 
 2. 如果我们做exec程序替换，不会创建新进程，会影响历史打开的文件吗？
+
+> 不影响重定向
 
 ```c
 #include <stdio.h>
@@ -663,7 +662,6 @@ int main()
 
     return 0;
 }
-
 ```
 
 ![](./Linux文件操作.assets/1745584631539-df1dab50-5767-458a-81cd-3501e58acb14.png)
@@ -1180,7 +1178,6 @@ int main()
     close(fd);
     return 0;
 }
-
 ```
 
 这种方式便可以将2号文件描述符重定向至文件，由于stderr没有缓冲区，“hello world”不用`fflash`就可以写入文件：
@@ -1211,7 +1208,6 @@ int main()
 
     return 0;
 }
-
 ```
 
 + 分别执行了两次，一次是直接输出，第二次是重定向到了文件里，再查看文件里的内容
@@ -1240,7 +1236,7 @@ int main()
 
 + 其实缓冲区就在FILE结构体中
 
-> FILE结构体的代码：`在/usr/include/libio.h`
+> FILE结构体的代码：`/usr/include/libio.h`
 >
 
 ```c

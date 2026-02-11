@@ -187,7 +187,8 @@ clean:
 ![](./Linux项目自动化构建工具之make_Makefile.assets/4277ff553b48be7969601cad197b6d0e.png)
 
 ## 六、原理讲解
-+ make是如何工作的，在默认的方式下，也就是我们只输入make命令。
+make是如何工作的，在默认的方式下，也就是我们只输入make命令。
+
 1. make会在当前目录下找名字叫“Makefile”或“makefile”的文件。
 2. 如果找到，它会找文件中的第一个目标文件（target），在上面的例子中，他会找到“hello”这个文件，并把这个文件作为最终的目标文件。
 3. 如果hello文件不存在，或是hello所依赖的后面的hello.o文件的文件修改时间要比hello这个文件新（可以用 touch 测试），那么，他就会执行后面所定义的命令来生成hello这个文件。

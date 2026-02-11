@@ -1676,5 +1676,590 @@ int main()
 
 ![](./Linux进程间通信.assets/1748395076751-1558ed3a-e65f-4848-a3da-1e16662acd1b.png)
 
+## mmap实现进程间通信
 
+### SharedMem.hpp
+
+```CPP
+#pragma once
+
+#include <iostream>
+#include <sys/mman.h>
+#include <semaphore.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <pthread.h>
+
+#define SIZE 4096
+
+class SafeObj
+{
+public:
+    SafeObj()
+    {
+    }
+    void InitObj()
+    {
+        // 初始化锁
+        pthread_mutexattr_t mattr;
+        pthread_mutexattr_init(&mattr);
+        pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED); // 设置进程间共享
+        pthread_mutex_init(&lock, &mattr);
+
+        // 初始化条件变量
+        pthread_condattr_t cattr;
+        pthread_condattr_init(&cattr);
+        pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED); // 设置进程间共享
+        pthread_cond_init(&cond, &cattr);
+
+        // 缓冲区清空
+        memset(buffer, 0, sizeof(buffer));
+    }
+    void CleanupObj()
+    {
+        pthread_mutex_destroy(&lock);
+        pthread_cond_destroy(&cond);
+    }
+    void LockObj()
+    {
+        int n = ::pthread_mutex_lock(&lock);
+        (void)n;
+    }
+    void UnlockObj()
+    {
+        int n = ::pthread_mutex_unlock(&lock);
+        (void)n;
+    }
+    void Wait()
+    {
+        int n = ::pthread_cond_wait(&cond, &lock);
+        (void)n;
+    }
+    void Signal()
+    {
+        int n = ::pthread_cond_signal(&cond);
+        (void)n;
+    }
+    void BroadCast()
+    {
+        int n = ::pthread_cond_broadcast(&cond);
+        if (n != 0)
+            std::cerr << "broadcast error" << std::endl;
+        else
+            std::cerr << "broadcast succcess" << std::endl;
+    }
+    void GetContent(std::string *out)
+    {
+        *out = buffer;
+    }
+    void SetContent(const std::string &in)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        strncpy(buffer, in.c_str(), in.size());
+    }
+    ~SafeObj()
+    {
+    }
+
+private:
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    char buffer[SIZE]; // 未来进程共享的数据区域
+};
+
+// 映射的文件，必须以/开头，这是mmap的约定
+#define SHARED_MEMORY_FILE "/shm"
+#define SHARED_MEMORY_SIZE sizeof(SafeObj)
+
+class MmapMemory
+{
+public:
+    MmapMemory(const std::string &file, int size) : _file(file), _size(size), _fd(-1), _mmap_addr(nullptr)
+    {
+    }
+    void OpenFile()
+    {
+        _fd = ::shm_open(_file.c_str(), O_CREAT | O_RDWR, 0666);
+        if (_fd < 0)
+        {
+            perror("shm_open");
+            exit(1);
+        }
+    }
+    void TruncSharedMemory()
+    {
+        int n = ftruncate(_fd, _size);
+        if (n < 0)
+        {
+            perror("ftruncate");
+            exit(2);
+        }
+    }
+    void *Mmap()
+    {
+        _mmap_addr = ::mmap(nullptr, _size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
+        if (_mmap_addr == MAP_FAILED)
+        {
+            perror("mmap");
+            exit(3);
+        }
+        return _mmap_addr;
+    }
+    void RemoveFile()
+    {
+        int n = ::shm_unlink(_file.c_str());
+        if (n < 0)
+        {
+            perror("shm_unlink");
+            exit(4);
+        }
+    }
+    void *MmapAddr()
+    {
+        return _mmap_addr;
+    }
+    ~MmapMemory()
+    {
+        if (_fd > 0)
+        {
+            ::close(_fd);
+            std::cout << "关闭mmap文件" << std::endl;
+        }
+
+        int n = ::munmap(_mmap_addr, _size);
+        if (n == 0)
+        {
+            std::cout << "munmap 完成" << std::endl;
+        }
+    }
+
+private:
+    int _fd;
+    int _size;
+    std::string _file;
+    void *_mmap_addr;
+};
+
+class MmapMemoryServer : public MmapMemory
+{
+public:
+    MmapMemoryServer() : MmapMemory(SHARED_MEMORY_FILE, SHARED_MEMORY_SIZE)
+    {
+        MmapMemory::OpenFile();
+        MmapMemory::TruncSharedMemory();
+        MmapMemory::Mmap();
+        obj = static_cast<SafeObj *>(MmapMemory::MmapAddr());
+        obj->InitObj();
+    }
+    // 每个进程都有一次读取数据的机会
+    void RecvMessage(std::string *out)
+    {
+        obj->LockObj();
+        obj->Wait();
+        obj->GetContent(out);
+        obj->UnlockObj();
+    }
+    ~MmapMemoryServer()
+    {
+        obj->CleanupObj();
+        MmapMemory::RemoveFile();
+    }
+
+private:
+    SafeObj *obj;
+};
+
+class MmapMemoryClient : public MmapMemory
+{
+public:
+    MmapMemoryClient() : MmapMemory(SHARED_MEMORY_FILE, SHARED_MEMORY_SIZE)
+    {
+        MmapMemory::OpenFile();
+        MmapMemory::Mmap();
+        obj = static_cast<SafeObj *>(MmapMemory::MmapAddr());
+    }
+    void SendMessage(const std::string &in)
+    {
+        obj->LockObj();
+        obj->SetContent(in);
+        // SafeSharedMemory::Signal(); //唤醒进程
+        obj->BroadCast(); // 把他们全部叫醒，让他们自己判断，谁应该活动
+        obj->UnlockObj();
+    }
+    ~MmapMemoryClient()
+    {
+    }
+
+private:
+    SafeObj *obj;
+};
+```
+
+
+
+### Server.cc
+
+```CPP
+#include "SharedMem.hpp"
+#include <sys/wait.h>
+#include <sys/types.h>
+
+void Active(MmapMemoryServer &svr, std::string processname)
+{
+    std::cout << "process is running: " << processname << std::endl;
+    std::string who;
+    while (true)
+    {
+        svr.RecvMessage(&who);
+        if(who == processname || who == "all")
+        {
+            std::cout << processname << " is active!" << std::endl;
+        }
+        if(who == "end")
+        {
+            std::cout << processname << " is quit!" << std::endl;
+            break;
+        }
+    }
+}
+
+int main()
+{
+    MmapMemoryServer svr;
+
+    for (int i = 0; i < 10; i++)
+    {
+        pid_t id = fork();
+        if (id == 0)
+        {
+            std::string name = "process-" + std::to_string(i);
+            Active(svr, name);
+            exit(0);
+        }
+    }
+    Active(svr, "process-main");
+
+    for(int i = 0; i < 10; i++)
+    {
+        wait(nullptr);
+    }
+
+    return 0;
+}
+```
+
+
+
+### Client.cc
+
+```CPP
+#include "SharedMem.hpp"
+#include <string.h>
+
+int main()
+{
+    MmapMemoryClient cli;
+    std::string who;
+    while (true)
+    {
+        std::cout << "Please Enter# ";
+        std::getline(std::cin, who);
+        cli.SendMessage(who);
+        if(who == "end")
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+```
+
+## mmap实现文件LRU缓存
+
+### LRUCache.hpp
+
+```CPP
+#pragma once
+
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <list>
+#include <memory>
+#include <unordered_map>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
+namespace LRUCache
+{
+#define BLOCK_ADDR_ALIGN(off) (off & ~(0xFFF)) // 清除低12位
+#define NORMAL (1 << 0)
+#define NEW (1 << 1)
+#define VISIT (1 << 2)
+#define DELETE (1 << 2)
+
+    const int gdefaultfd = -1;
+    const int gblocksize = 4096; // 4KB
+    const int gcapacity = 3;     // 10个block
+
+    class DataBlock
+    {
+    private:
+        void UpdateStatus(unsigned status) { _status=0; _status |= status; }
+        bool ConfirmStatus(unsigned status) { return _status & status; }
+
+    public:
+        DataBlock(off_t off, off_t size) : _off(off), _size(size), _addr(nullptr), _status(NEW)
+        {
+        }
+        // 映射载入内存
+        bool DoMap(int fd)
+        {
+            _addr = ::mmap(nullptr, _size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, _off);
+            if (_addr == MAP_FAILED)
+            {
+                perror("mmap"); // 在计算正确的情形下，不可能
+                return false;
+            }
+            std::cout << "mmap && 加载 " << _off << " 成功" << std::endl;
+            return true;
+        }
+        // 取消映射，从内存中移除
+        bool DoUnmap()
+        {
+            int n = ::munmap(_addr, _size);
+            if (n < 0)
+            {
+                perror("munmap");
+                return false;
+            }
+            std::cout << "munmap && 移除 " << _off << " 成功" << std::endl;
+            return true;
+        }
+        // 设置状态
+        void Status2Normal() { UpdateStatus(NORMAL); }
+        void Status2New() { UpdateStatus(NEW); }
+        void Status2Visit() { UpdateStatus(VISIT); }
+        void Status2Delete() { UpdateStatus(DELETE); }
+        // 确认状态
+        bool IsNormal() { return ConfirmStatus(NORMAL); }
+        bool IsNew() { return ConfirmStatus(NEW); }
+        bool IsVisit() { return ConfirmStatus(VISIT); }
+        bool IsDelete() { return ConfirmStatus(DELETE); }
+        // 获取基本属性
+        off_t Off() { return _off; }
+        void *Addr() { return _addr; }
+        off_t Size() { return _size; }
+
+        ~DataBlock()
+        {
+        }
+        void DebugPrint()
+        {
+            std::cout << "_off: " << _off << std::endl;
+            std::cout << "_size: " << _size << std::endl;
+            std::cout << "_addr: " << _addr << std::endl;
+            std::cout << "_status: ";
+            if(IsNormal())
+                std::cout << "NORMAL";
+            if(IsNew())
+                std::cout << "NEW";
+            if(IsVisit())
+                std::cout << "VISIT";
+            if(IsDelete())
+                std::cout << "delete";
+            std::cout << std::endl;
+        }
+
+    private:
+        off_t _off;       // 该block在文件中的起始偏移量，4KB对齐的
+        off_t _size;      // 该block的大小
+        void *_addr;      // 该block映射的虚拟地址是什么位置
+        unsigned _status; // 该block的状态
+    };
+
+    class FileCache
+    {
+    private:
+        // 要访问的块，是否在文件和合法范围内
+        bool IsOffLegal(off_t off) { return off < _total; }
+        // 目标块，是否已经被缓存了
+        bool IsCached(off_t off) { return _hash.find(off) != _hash.end(); }
+        // 缓存是不是满了
+        bool IsCacheFull() { return _cache.size() > _cachemaxnum; }
+        // 根据偏移量，获取实际对应的块大小
+        off_t GetSizeFromOff(off_t off)
+        {
+            off_t size = gblocksize;
+            if (off + gblocksize > _total)
+            {
+                // 文件不一定会被4KB整除，要求一下可能得剩余
+                size = _total % gblocksize;
+            }
+            return size;
+        }
+        void DoLRU(off_t off)
+        {
+            if (!IsCached(off))
+                return;
+            if ((_hash[off]->IsNew())) // 如果是因插入触发的LRU，检测是否要移除尾部节点
+            {
+                _hash[off]->Status2Normal(); // 让节点成为普通节点
+                if (IsCacheFull())
+                {
+                    // 1. 让尾部block映射的内存，从地址空间中移除
+                    _cache.back()->DoUnmap();
+                    // 2. 从hash表中移除尾部block
+                    std::cout << "cache 移除: " << _cache.back()->Off() << std::endl;
+                    _hash.erase(_cache.back()->Off());
+                    // 从cache list中移除尾部block
+                    _cache.pop_back();
+                }
+            }
+            else if (_hash[off]->IsVisit()) // 如果是访问节点触发LRU，检测是否要移除尾部节点
+            {
+                _hash[off]->Status2Normal();
+                _cache.remove(_hash[off]);     // 从缓存中移除
+                _cache.push_front(_hash[off]); // 从新插入到缓存头部
+                std::cout << "将 " << off << "移动到cache头部" << std::endl;
+            }
+            else
+            {
+                // TODO
+            }
+        }
+        void DoCache(off_t off)
+        {
+            // 计算指定偏移量下的数据块大小,这个块大小，不一定完全是4KB大小哦
+            off_t blocksize = GetSizeFromOff(off);
+            // 构建block对象
+            std::shared_ptr<DataBlock> block = std::make_shared<DataBlock>(off, blocksize);
+            // 先加载并映射到地址空间
+            block->DoMap(_fd);
+            // 更新到hash表，方便随时提取
+            _hash.insert(std::make_pair(off, block));
+            // 头插到cache中，缓存起来
+            _cache.push_front(block);
+        }
+
+    public:
+        FileCache(const std::string &file) : _file(file), _fd(gdefaultfd)
+        {
+            _fd = ::open(_file.c_str(), O_RDWR); // 这个文件要存在，这样缓存才有意义
+            if (_fd < 0)
+            {
+                perror("open");
+                return;
+            }
+            struct stat status;
+            int n = ::fstat(_fd, &status);
+            if (n < 0)
+            {
+                perror("stat");
+                return;
+            }
+            _total = status.st_size;
+            _cachemaxnum = gcapacity;
+        }
+        std::shared_ptr<DataBlock> GetBlock(off_t off)
+        {
+            // 1. 偏移量不合法，就没必要玩了
+            if (!IsOffLegal(off))
+                return nullptr;
+            // 2. 先根据偏移量，计算真实的块在文件中的起始地址
+            off = BLOCK_ADDR_ALIGN(off);
+            // 3. ok,在合法偏移量的位置, 下面查看cache是否命中
+            if (_hash.find(off) != _hash.end()) // 命中
+            {
+                // 3-1 命中，更新block状态,标记为被访问
+                _hash[off]->Status2Visit();
+            }
+            else
+            {
+                // 3-2 没有命中,执行加载
+                DoCache(off);
+            }
+            DoLRU(off); // 检测并执行LRU算法
+            return _hash[off];
+        }
+        void PrintCache()
+        {
+            std::cout << "---------cache 内容----------" << std::endl;
+            for (auto &iter : _cache)
+            {
+                iter->DebugPrint();
+                std::cout << "|" << std::endl;
+            }
+            std::cout << "nullptr" << std::endl;
+            std::cout << "-----------------------------" << std::endl;
+        }
+        ~FileCache()
+        {
+            if (_fd != gdefaultfd)
+            {
+                ::close(_fd);
+            }
+        }
+
+    private:
+        std::string _file; // 文件名+路径
+        int _fd;           // 文件fd
+        off_t _total;      // 文件总大小
+        std::list<std::shared_ptr<DataBlock>> _cache;
+        int _cachemaxnum;
+        std::unordered_map<off_t, std::shared_ptr<DataBlock>> _hash;
+    };
+}
+```
+
+### Main.cc
+
+```cpp
+#include "LRUCache.hpp"
+
+int main(int argc, char *argv[])
+{
+    if (argc != 2)
+    {
+        std::cerr << "Usage: " << argv[0] << " filemame" << std::endl;
+        return 1;
+    }
+    std::string filename = argv[1];
+    LRUCache::FileCache fc(filename);
+    int count = 0;
+    // 依次对不存在的block测试获取
+    while(count<10)
+    {
+        fc.GetBlock(count*4096);
+        fc.PrintCache();
+        count++;
+        sleep(1);
+    }
+
+    // 测试对已经存在的block进行获取
+    while(true)
+    {
+        off_t off;
+        std::cout << "Please Enter Off# ";
+        std::cin >> off;
+        auto b = fc.GetBlock(off);
+        std::cout << "block addr: " << b->Addr() << std::endl;
+        fc.PrintCache();
+    }
+    return 0;
+}
+```
+
+实验：
+
+```CPP
+dd if=/dev/zero of=log.txt bs=4096 count=10
+```
 

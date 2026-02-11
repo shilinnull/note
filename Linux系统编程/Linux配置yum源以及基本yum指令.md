@@ -29,12 +29,7 @@ sudo vim /etc/yum.repos.d/CentOS-Base.repo
 > 回到正题那么哪里找呢？
 >
 
-国外的yum源访问速度较慢，一般情况下建议替换成国内的免费yum源。国内提供了不少优秀的yum源，例如：
-
-+ 搜狐开源镜像站：[http://mirrors.sohu.com/](http://mirrors.sohu.com/)
-+ 网易开源镜像站：[http://mirrors.163.com/](http://mirrors.163.com/)
-+ 中国科学技术大学:   [http://mirrors.ustc.edu.cn/](http://mirrors.ustc.edu.cn/)
-+ 清华大学： [http://mirrors.tuna.tsinghua.edu.cn/](http://mirrors.tuna.tsinghua.edu.cn/)
+国外的yum源访问速度较慢，一般情况下建议替换成国内的免费yum源。国内提供了不少优秀的yum源，可以直接使用AI工具进行询问
 
 ## 四、一键配置yum源【三步走】
 上面那种方法比较挫，我们可以直接使用配置好的文件，直接把名字换成和原来的一样，然后再更新

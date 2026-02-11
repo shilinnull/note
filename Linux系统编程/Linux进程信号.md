@@ -1,4 +1,4 @@
-# Linux进程信号
+# Linux进程信号、中断、页表
 # 信号的概念
 我们生活中的下课铃声，红绿灯，快递发短信取件码等。。。都是信号
 
@@ -73,7 +73,6 @@ sighandler_t signal(int signum, sighandler_t handler);
 #include <iostream>
 #include <signal.h>
 #include <unistd.h>
-
 
 int main()
 {
@@ -1061,7 +1060,7 @@ int main()
 + 用户级页表有几份？
     - **有几个进程就有几份用户级页表**，因为进程具有独立性
 + 内核级页表有几份？
-    - 每个进程看到的`3 ~ 4GB`的东西都是一样的，在整个系统里，进程再怎么切换，`3 ~4GB`的内容是不变的
+    - 每个进程看到的`3 ~ 4GB`的东西都是一样的，在整个系统里，进程再怎么切换，`3~4GB`的内容是不变的
 1. 站在进程视角：我们调用系统中的方法，就是在我自己的地址空间中进行执行的
 2. 站在操作系统角度：任何一个时刻都会有进程在执行，我们想执行操作系统的代码，就可以随时执行
 + 操作系统的本质是一个基于时钟中断的一个死循环
@@ -1354,7 +1353,7 @@ sys_setreuid,sys_setregid };
 #define __NR_unlink              10 /* Common                                      */
 #define __NR_execv               11 /* SunOS Specific                              */
 #define __NR_chdir               12 /* Common                                      */
-#define __NR_chown		 13 /* Common					   */
+#define __NR_chown		         13 /* Common		                			   */
 #define __NR_mknod               14 /* Common                                      */
 #define __NR_chmod               15 /* Common                                      */
 #define __NR_lchown              16 /* Common                                      */
@@ -1385,11 +1384,13 @@ sys_setreuid,sys_setregid };
 如果我们要访问内核空间，就必须要改CPL
 
 ## 缺页中断？内存碎片处理？除零野指针错误？
+
+下面是异常（陷阱）中断程序初始化子程序。设置它们的中断调用门（中断向量）。 
+set_trap_gate()与 set_system_gate()的主要区别在于前者设置的特权级为 0，后者是 3。因此 
+断点陷阱中断 int3、溢出中断 overflow 和边界出错中断 bounds 可以由任何程序产生。 
+这两个函数均是嵌入式汇编宏程序(include/asm/system.h,36,39)。
+
 ```c
-// 下面是异常（陷阱）中断程序初始化子程序。设置它们的中断调用门（中断向量）。 
- // set_trap_gate()与 set_system_gate()的主要区别在于前者设置的特权级为 0，后者是 3。因此 
- // 断点陷阱中断 int3、溢出中断 overflow 和边界出错中断 bounds 可以由任何程序产生。 
- // 这两个函数均是嵌入式汇编宏程序(include/asm/system.h,36,39)。
 void trap_init(void)
 {
 	int i;

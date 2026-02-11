@@ -56,8 +56,8 @@ watch result
 ```
 
 ## set var确定问题原因
-+ 在调试的监视窗口要手动改变一个变量的值就可以使用`set var`
-    - eg：set var flag=1
+在调试的监视窗口要手动改变一个变量的值就可以使用`set var`
+- eg：set var flag=1
 
 ## 条件断点
 条件断点添加常见两种方式：
