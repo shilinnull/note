@@ -38,7 +38,7 @@ int Index_BF(string s, string t)
 ![](./BF&&KMP.assets/file-20251116202422303.jpeg)
 
 
-模式匹配：<font style="color:#e84c22;">子串的定位操作，求的是子串（模式串）在主串中的位置</font>
+模式匹配：子串的定位操作，求的是子串（模式串）在主串中的位置
 
 
 
